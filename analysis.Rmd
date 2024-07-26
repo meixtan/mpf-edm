@@ -1,0 +1,359 @@
+---
+title: "analysis"
+output: html_document
+date: "2024-07-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup
+
+```{r}
+human <- read_csv('human_res_meta.csv') %>%
+  mutate(across(c(ND, NRO, PP), ~ as.numeric(gsub("\\[|\\]", "", .)))) %>%
+  mutate(source = 'human') %>%
+  select(-c('tid')) %>%
+  select('prompt', 'essay', 'grade', 'essayid', 'type', 'score', 
+         'gender', 'race', 'ed', 'ds', 'ell',
+         'wc', 'sc', 'fk', 'ttr', 'inverse_perplexity', 'gr_rate', 'content_word_density',
+         'uptake', 'cosine_similarity', 'pronoun_fps', 'pronoun_sp', 'pronoun_fpp',
+         'wh_question_count', 'yes_no_question_count', 'ND', 'NRO', 'PP', 
+         'pa_mean', 'pa_var', 'source')
+baseline <- read_csv('baseline_res_meta.csv') %>%
+  mutate(across(c(ND, NRO, PP), ~ as.numeric(gsub("\\[|\\]", "", .)))) %>%
+  mutate(source = 'baseline') %>%
+  select(-c('Unnamed: 0')) %>%
+  select('prompt', 'essay', 'grade', 'essayid', 'type', 'score', 
+         'gender', 'race', 'ed', 'ds', 'ell',
+         'wc', 'sc', 'fk', 'ttr', 'inverse_perplexity', 'gr_rate', 'content_word_density',
+         'uptake', 'cosine_similarity', 'pronoun_fps', 'pronoun_sp', 'pronoun_fpp',
+         'wh_question_count', 'yes_no_question_count', 'ND', 'NRO', 'PP', 
+         'pa_mean', 'pa_var', 'source')
+finetune <- read_csv('finetune_res_meta.csv') %>%
+  mutate(across(c(ND, NRO, PP), ~ as.numeric(gsub("\\[|\\]", "", .)))) %>%
+  mutate(source = 'finetuned') %>%
+  select(-c('Unnamed: 0')) %>%
+  select('prompt', 'essay', 'grade', 'essayid', 'type', 'score', 
+         'gender', 'race', 'ed', 'ds', 'ell',
+         'wc', 'sc', 'fk', 'ttr', 'inverse_perplexity', 'gr_rate', 'content_word_density',
+         'uptake', 'cosine_similarity', 'pronoun_fps', 'pronoun_sp', 'pronoun_fpp',
+         'wh_question_count', 'yes_no_question_count', 'ND', 'NRO', 'PP', 
+         'pa_mean', 'pa_var', 'source')
+```
+
+```{r}
+all <- rbind(human, baseline, finetune)
+```
+
+```{r}
+human_dro <- human %>% 
+  filter(ND == 0 & NRO == 0)
+baseline_dro <- baseline %>%
+  filter(ND == 0 & NRO == 0)
+finetune_dro <- finetune %>%
+  filter(ND == 0 & NRO == 0)
+all_dro <- rbind(human_dro, baseline_dro, finetune_dro)
+```
+
+```{r}
+human_asap <- read_csv('human_res_asap_meta.csv') %>%
+  mutate(across(c(ND, NRO, PP), ~ as.numeric(gsub("\\[|\\]", "", .)))) %>%
+  mutate(source = 'human') %>%
+  rename(grade = grade_level) %>%
+  rename(score = domain1_score) %>%
+  rename(essayid = essay_id) %>%
+  select('prompt', 'essay', 'grade', 'type', 'score',
+         'wc', 'sc', 'fk', 'ttr', 'inverse_perplexity', 'gr_rate', 'content_word_density',
+         'uptake', 'cosine_similarity', 'pronoun_fps', 'pronoun_sp', 'pronoun_fpp',
+         'wh_question_count', 'yes_no_question_count', 'ND', 'NRO', 'PP', 
+         'pa_mean', 'pa_var', 'source')
+baseline_asap <- read_csv('baseline_res_asap_meta.csv') %>%
+  mutate(across(c(ND, NRO, PP), ~ as.numeric(gsub("\\[|\\]", "", .)))) %>%
+  mutate(source = 'baseline') %>%
+  rename(score = domain1_score) %>%
+  select('prompt', 'essay', 'grade', 'type', 'score',
+         'wc', 'sc', 'fk', 'ttr', 'inverse_perplexity', 'gr_rate', 'content_word_density',
+         'uptake', 'cosine_similarity', 'pronoun_fps', 'pronoun_sp', 'pronoun_fpp',
+         'wh_question_count', 'yes_no_question_count', 'ND', 'NRO', 'PP', 
+         'pa_mean', 'pa_var', 'source')
+finetune_asap <- read_csv('finetune_res_asap_meta.csv') %>%
+  mutate(across(c(ND, NRO, PP), ~ as.numeric(gsub("\\[|\\]", "", .)))) %>%
+  mutate(source = 'finetuned') %>%
+  rename(grade = grade_level) %>%
+  rename(score = domain1_score) %>%
+  rename(essayid = essay_id) %>%
+  select('prompt', 'essay', 'grade','type', 'score',
+         'wc', 'sc', 'fk', 'ttr', 'inverse_perplexity', 'gr_rate', 'content_word_density',
+         'uptake', 'cosine_similarity', 'pronoun_fps', 'pronoun_sp', 'pronoun_fpp',
+         'wh_question_count', 'yes_no_question_count', 'ND', 'NRO', 'PP', 
+         'pa_mean', 'pa_var', 'source')
+```
+
+```{r}
+all_asap <- rbind(human_asap, baseline_asap, finetune_asap)
+```
+
+```{r}
+human_asap_dro <- human_asap %>% 
+  filter(ND == 0 & NRO == 0)
+baseline_asap_dro <- baseline_asap %>%
+  filter(ND == 0 & NRO == 0)
+finetune_asap_dro <- finetune_asap %>%
+  filter(ND == 0 & NRO == 0)
+all_asap_dro <- rbind(human_asap_dro, baseline_asap_dro, finetune_asap_dro)
+```
+
+# Between Essay Variation
+
+```{r}
+meta_by_essay <- function(df) {
+  df <- df |>
+    group_by(essay, type, score, gender, race, ed, ds, ell) |>
+    summarise(across(c(wc, sc, fk, ttr, inverse_perplexity, 
+                       content_word_density, uptake, cosine_similarity, pa_mean), list(
+      min = ~min(.x, na.rm = TRUE),
+      max = ~max(.x, na.rm = TRUE),
+      mean = ~mean(.x, na.rm = TRUE),
+      var = ~var(.x, na.rm = TRUE)
+    ), .names = "{.col}_{.fn}"),
+    across(c(pronoun_fps, pronoun_sp, pronoun_fpp, 
+                       wh_question_count, yes_no_question_count, ND, NRO, PP), list(
+      sum = ~sum(.x, na.rm = TRUE)
+    ), .names = "{.col}_{.fn}"))
+  return(df)
+}
+
+human_by_essay <- meta_by_essay(human)
+baseline_by_essay <- meta_by_essay(baseline)
+finetune_by_essay <- meta_by_essay(finetune)
+```
+
+# Summary Stats
+
+```{r}
+summary_stats <- function(df) {
+  df <- df |>
+  mutate(across(c(pronoun_fps, pronoun_sp, pronoun_fpp, 
+                  wh_question_count, yes_no_question_count), ~ . > 0, .names = "{.col}")) |>
+    group_by(source) |>
+    summarise(across(c(wc, sc, fk, ttr, inverse_perplexity, gr_rate,
+                       content_word_density, uptake, cosine_similarity, pa_mean), list(
+      mean = ~mean(.x, na.rm = TRUE),
+      sd = ~sd(.x, na.rm = TRUE)
+    ), .names = "{.col}_{.fn}"),
+    across(c(pronoun_fps, pronoun_sp, pronoun_fpp, 
+                       wh_question_count, yes_no_question_count, ND, NRO, PP), list(
+      sum = ~sum(.x, na.rm = TRUE)/1163
+    ), .names = "{.col}_{.fn}"))
+}
+```
+
+NWP Eval
+
+```{r}
+human_stats_all <- summary_stats(human)
+baseline_stats_all <- summary_stats(baseline)
+finetune_stats_all <- summary_stats(finetune)
+all_stats <- rbind(human_stats_all, baseline_stats_all, finetune_stats_all)
+
+human_stats_dro <- summary_stats(human_dro)
+baseline_stats_dro <- summary_stats(baseline_dro)
+finetune_stats_dro <- summary_stats(finetune_dro)
+all_dro_stats <- rbind(human_stats_dro, baseline_stats_dro, finetune_stats_dro)
+```
+
+ASAP Eval
+
+```{r}
+human_stats_asap_all <- summary_stats(human_asap)
+baseline_stats_asap_all <- summary_stats(baseline_asap)
+finetune_stats_asap_all <- summary_stats(finetune_asap)
+all_asap_stats <- rbind(human_stats_asap_all, baseline_stats_asap_all, finetune_stats_asap_all)
+
+human_stats_asap_dro <- summary_stats(human_asap_dro)
+baseline_stats_asap_dro <- summary_stats(baseline_asap_dro)
+finetune_stats_asap_dro <- summary_stats(finetune_asap_dro)
+all_asap_dro_stats <- rbind(human_stats_asap_dro, 
+                            baseline_stats_asap_dro, finetune_stats_asap_dro)
+```
+
+# PA-Distribution
+
+```{r}
+pa1 <- all_dro |>
+  mutate(set = 'PERSUADE') |>
+  select(source, set, pa_mean)
+pa2 <- all_asap_dro |>
+  mutate(set = 'ASAP-AES') |>
+  select(source, set, pa_mean)
+pa_data <- rbind(pa1, pa2) |>
+  mutate(source = case_when(source == "baseline" ~ "BASELINE",
+                            source == "finetuned" ~ "FINETUNED",
+                            source == "human" ~ "HUMAN"))
+```
+
+```{r}
+library(wesanderson)
+ggplot(pa_data, aes(x = source, y = pa_mean, color = set)) +
+  geom_boxplot() +
+  scale_color_manual(values = wes_palette("GrandBudapest2", n = 2)) +
+  labs(x = "",
+       y = "Feedback Power-Affirming Score\n",
+       color = "Evaluation Dataset") +
+  theme_minimal()
+
+ggsave("PA_score_boxplot.png")
+```
+
+```{r}
+pa1 <- all_dro |>
+  mutate(set = 'PERSUADE') |>
+  group_by(essay, score, source, set) |>
+  summarize(meanpa = mean(pa_mean)) |>
+  select(source, set, essay, meanpa)
+pa2 <- all_asap_dro |>
+  mutate(set = 'ASAP-AES') |>
+  group_by(essay, score, source, set) |>
+  summarize(meanpa = mean(pa_mean)) |>
+  select(source, set, essay, meanpa)
+pa_data <- rbind(pa1, pa2) |>
+  mutate(source = case_when(source == "baseline" ~ "BASELINE",
+                            source == "finetuned" ~ "FINETUNED",
+                            source == "human" ~ "HUMAN"))
+```
+
+```{r}
+ggplot(pa1 %>%
+         mutate(source = case_when(source == "baseline" ~ "BASELINE",
+                            source == "finetuned" ~ "FINETUNED",
+                            source == "human" ~ "HUMAN"))
+       , aes(x = score, y = meanpa, color = source)) +
+  geom_point(alpha = 0.2) +
+  geom_jitter() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_manual(values = wes_palette("GrandBudapest2", n = 3)) +
+  labs(
+       x = "\nEssay Score",
+       y = "Feedback Power-Affirming Score\n",
+       color = "") +
+  theme_minimal()
+
+ggsave("PA_score_scatter.png")
+```
+
+```{r}
+ggplot(pa2, aes(x = score, y = meanpa, color = source)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_manual(values = wes_palette("GrandBudapest2", n = 3)) +
+  labs(title = "Scatter Plot with Paired Colors",
+       x = "X-axis Label",
+       y = "Y-axis Label") +
+  theme_minimal()
+```
+
+```{r}
+data <- all_dro |>
+  mutate(set = 'PERSUADE') |>
+  group_by(essay, score, source, set, grade, type) |>
+  summarize(meanpa = mean(pa_mean)) |>
+  group_by(grade, type) %>%
+  mutate(quartiles = ntile(score, 4)) %>%
+  ungroup()
+ggplot(data, aes(x = quartiles, y = meanpa, color = source)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_manual(values = wes_palette("GrandBudapest2", n = 3)) +
+  labs(title = "Scatter Plot with Paired Colors",
+       x = "X-axis Label",
+       y = "Y-axis Label") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(pa_data, aes(x = score, y = meanpa, color = source)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_manual(values = wes_palette("GrandBudapest2", n = 3)) +
+  labs(title = "Scatter Plot with Paired Colors",
+       x = "X-axis Label",
+       y = "Y-axis Label") +
+  theme_minimal()
+```
+
+## PA vs Specificity
+
+```{r}
+pa1 <- all_dro |>
+  mutate(set = 'PERSUADE') |>
+  select(source, set, pa_mean, uptake, content_word_density, cosine_similarity, 
+         pronoun_fps, pronoun_sp, pronoun_fpp)
+pa2 <- all_asap_dro |>
+  mutate(set = 'ASAP-AES') |>
+  select(source, set, pa_mean, uptake, content_word_density, cosine_similarity, 
+         pronoun_fps, pronoun_sp, pronoun_fpp)
+pa_data <- rbind(pa1, pa2) |>
+  mutate(source = case_when(source == "baseline" ~ "BASELINE",
+                            source == "finetuned" ~ "FINETUNED",
+                            source == "human" ~ "HUMAN"))
+```
+
+```{r}
+ggplot(pa_data, aes(x = cosine_similarity, y = pa_mean, color = source)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_manual(values = wes_palette("GrandBudapest2", n = 3)) +
+  theme_minimal()
+```
+
+```{r}
+model <- lm(pa_mean ~ uptake + content_word_density + cosine_similarity +
+         pronoun_fps + pronoun_sp + pronoun_fpp, data = pa_data)
+```
+
+```{r}
+summary(model)
+```
+
+```{r}
+pa1 <- all |>
+  mutate(set = 'PERSUADE') |>
+  select(source, set, ND, NRO) |>
+  mutate(ctype = case_when(ND == '1' ~ "Non-Dialogic",
+                           NRO == '1' ~ "Non-Revision-Oriented",
+                           TRUE ~ "DRO"))
+pa2 <- all_asap |>
+  mutate(set = 'ASAP-AES') |>
+  select(source, set, ND, NRO) |>
+  mutate(ctype = case_when(ND == '1' ~ "Non-Dialogic",
+                           NRO == '1' ~ "Non-Revision-Oriented",
+                           TRUE ~ "DRO"))
+pa_data <- rbind(pa1, pa2) |>
+  mutate(source = case_when(source == "baseline" ~ "BASELINE",
+                            source == "finetuned" ~ "FINETUNED",
+                            source == "human" ~ "HUMAN"))
+```
+
+```{r}
+ggplot(pa_data, aes(x = source, fill = ctype)) +
+  geom_bar(position = "fill") +
+  labs(
+       x = "",
+       y = "% of Feedback Comments\n",
+       fill = "Comment Type") +
+  scale_fill_manual(values = wes_palette("GrandBudapest2", n = 3)) +
+  coord_flip() +
+  theme_minimal()
+
+ggsave('comment_type_bar.png')
+```
+
+```{r}
+pa1 <- all |>
+  group_by(essay, source, gender, race, ed, ell) |>
+  summarize(meanpa = mean(pa_mean)) |>
+  group_by(ed, source) |>
+  summarize(mpa = mean(meanpa))
+```
